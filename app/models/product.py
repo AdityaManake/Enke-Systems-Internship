@@ -1,5 +1,5 @@
 from sqlalchemy import Column
-from database import Base
+from app.database import Base
 from sqlalchemy import Integer,String,DateTime,Numeric
 
 class Product(Base):
