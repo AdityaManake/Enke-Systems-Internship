@@ -2,4 +2,5 @@ venv/
 .idea/
 __pycache__/
 *.pyc
-.env
+.env.user
+linux_docker_learning.txt/
