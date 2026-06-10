@@ -1,4 +1,4 @@
-SELECT p.id, p.name, p.price, SUM(oi.order_items)
+SELECT p.id, p.name, p.price, SUM(oi.total_price) as total_revenue
 FROM products p
 INNER JOIN
 order_items oi
