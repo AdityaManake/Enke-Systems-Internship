@@ -1,7 +1,10 @@
 import logging
 import os
+import sys
 
-from app.main import build_database_url
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from main import build_database_url
+
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
