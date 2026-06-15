@@ -57,10 +57,12 @@ def run_query(engine, filename: str):
 
 def customer_vs_amount(df_dict, queries_dir):
     top_customers = df_dict["top_customers_df"]
-    labels = top_customers["id"].astype(str) + " - " + top_customers["name"]
-    plt.bar(labels, top_customers.total_amount_spend, color="blue", width=0.6)
+    plt.figure(figsize=(12, 6))
+    plt.bar(top_customers.name, top_customers.total_amount_spend, color="blue", width=0.6)
     plt.xlabel("Customers")
     plt.ylabel("Revenue")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
     chart_dir = os.path.join(queries_dir, "charts")
     os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "customer_vs_amount.png"))
@@ -70,7 +72,7 @@ def customer_vs_amount(df_dict, queries_dir):
 
 def product_vs_revenue(df_dict, queries_dir):
     top_products = df_dict["top_products_df"]
-    labels = top_products["id"].astype(str) + " - " + top_products["name"]
+    labels = top_products["name"]
     plt.bar(labels, top_products.total_revenue, color="blue", width=0.6)
     plt.xlabel("Products")
     plt.ylabel("Revenue")
