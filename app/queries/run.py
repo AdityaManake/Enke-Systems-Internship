@@ -59,7 +59,7 @@ def run_query(engine, filename: str):
 def customer_vs_amount(df_dict, chart_dir):
     top_customers = df_dict["top_customers_df"]
     labels = top_customers["id"].astype(str) + " - " + top_customers["name"]
-    plt.bar(labels, top_customers.revenue, color="blue", width=0.6)
+    plt.bar(labels, top_customers.total_amount_spend, color="blue", width=0.6)
     plt.xlabel("Customers")
     plt.ylabel("Revenue")
     plt.legend()
@@ -90,9 +90,10 @@ def orders_per_month(df_dict, chart_dir):
 
 def ordervalue_vs_customers(df_dict, chart_dir):
     avg_order_value = df_dict["avg_order_value_df"]
-    plt.hist(avg_order_value.id, avg_order_value.average_order_value, color="blue")
+    plt.bar(avg_order_value.id, avg_order_value.average_order_value, color="blue")
     plt.xlabel("Customers")
     plt.ylabel("Average Order Value")
+    plt.legend()
     plt.savefig(os.path.join(chart_dir, "ordervalue_vs_customers.png"))
     plt.close()
 
