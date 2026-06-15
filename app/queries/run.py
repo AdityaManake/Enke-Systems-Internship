@@ -19,14 +19,13 @@ logging.basicConfig(level=logging.INFO)
 
 def main():
     queries_dir = os.path.dirname(os.path.abspath(__file__))
-    charts_dir = os.path.join(queries_dir, "charts")
     dict_df = creating_df(queries_dir)
-    customer_vs_amount(dict_df, charts_dir)
-    product_vs_revenue(dict_df, charts_dir)
-    orders_per_month(dict_df, charts_dir)
-    ordervalue_vs_customers(dict_df, charts_dir)
-    customer_vs_ordercount(dict_df, charts_dir)
-    mostexpensive_orders(dict_df, charts_dir)
+    customer_vs_amount(dict_df, queries_dir)
+    product_vs_revenue(dict_df, queries_dir)
+    orders_per_month(dict_df, queries_dir)
+    ordervalue_vs_customers(dict_df, queries_dir)
+    customer_vs_ordercount(dict_df, queries_dir)
+    mostexpensive_orders(dict_df, queries_dir)
     products_never_ordered(dict_df)
 
 
@@ -56,66 +55,78 @@ def run_query(engine, filename: str):
         return result.fetchall()
 
 
-def customer_vs_amount(df_dict, chart_dir):
+def customer_vs_amount(df_dict, queries_dir):
     top_customers = df_dict["top_customers_df"]
     labels = top_customers["id"].astype(str) + " - " + top_customers["name"]
     plt.bar(labels, top_customers.total_amount_spend, color="blue", width=0.6)
     plt.xlabel("Customers")
     plt.ylabel("Revenue")
-    plt.legend()
+    chart_dir = os.path.join(queries_dir, "charts")
+    os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "customer_vs_amount.png"))
     plt.close()
+    logger.info(f"Saving chart for customer_vs_amount")
 
 
-def product_vs_revenue(df_dict, chart_dir):
+def product_vs_revenue(df_dict, queries_dir):
     top_products = df_dict["top_products_df"]
     labels = top_products["id"].astype(str) + " - " + top_products["name"]
     plt.bar(labels, top_products.total_revenue, color="blue", width=0.6)
     plt.xlabel("Products")
     plt.ylabel("Revenue")
-    plt.legend()
+    chart_dir = os.path.join(queries_dir, "charts")
+    os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "product_vs_revenue.png"))
     plt.close()
+    logger.info(f"Saving chart for product_vs_revenue")
 
 
-def orders_per_month(df_dict, chart_dir):
+def orders_per_month(df_dict, queries_dir):
     order_per_month = df_dict["orders_per_month_df"]
     plt.plot(order_per_month.month, order_per_month.total_orders, color="blue")
     plt.xlabel("Month")
     plt.ylabel("Total Orders")
-    plt.legend()
+    chart_dir = os.path.join(queries_dir, "charts")
+    os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "orders_per_month.png"))
     plt.close()
+    logger.info(f"Saving chart for orders_per_month")
 
 
-def ordervalue_vs_customers(df_dict, chart_dir):
+def ordervalue_vs_customers(df_dict, queries_dir):
     avg_order_value = df_dict["avg_order_value_df"]
     plt.bar(avg_order_value.id, avg_order_value.average_order_value, color="blue")
     plt.xlabel("Customers")
     plt.ylabel("Average Order Value")
-    plt.legend()
+    chart_dir = os.path.join(queries_dir, "charts")
+    os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "ordervalue_vs_customers.png"))
     plt.close()
+    logger.info(f"Saving chart for ordervalue_vs_customers")
 
 
-def customer_vs_ordercount(df_dict, chart_dir):
+def customer_vs_ordercount(df_dict, queries_dir):
     customers_with_many_orders = df_dict["customers_with_many_orders_df"]
     plt.bar(customers_with_many_orders.id, customers_with_many_orders.total_orders, color="blue", width=0.6)
     plt.xlabel("Customers")
     plt.ylabel("Total Orders")
-    plt.legend()
+    chart_dir = os.path.join(queries_dir, "charts")
+    os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "customer_vs_ordercount.png"))
     plt.close()
+    logger.info(f"Saving chart for customer_vs_ordercount")
 
 
-def mostexpensive_orders(df_dict, chart_dir):
+def mostexpensive_orders(df_dict, queries_dir):
     most_expensive_order_per_customer = df_dict["most_expensive_order_per_customer_df"]
     plt.plot(most_expensive_order_per_customer.id, most_expensive_order_per_customer.most_expensive_order, color="blue")
     plt.xlabel("Customers")
     plt.ylabel("Most Expensive Orders")
-    plt.legend()
+    chart_dir = os.path.join(queries_dir, "charts")
+    os.makedirs(chart_dir, exist_ok=True)
     plt.savefig(os.path.join(chart_dir, "mostexpensive_order_per_customer.png"))
     plt.close()
+    logger.info(f"Saving chart for mostexpensive_order_per_customer")
 
 
 def products_never_ordered(df_dict):

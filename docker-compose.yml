@@ -7,9 +7,9 @@ services:
     env_file:
       - .env.user
     ports:
-      -  "5435:5432"
+      - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -20,14 +20,17 @@ services:
 
   data_generator:
     build:
-        context: .
-        target: data_generator
+      context: .
+      target: data_generator
     container_name: data-generator
     env_file:
       - .env.user
     depends_on:
       postgres:
-          condition: service_healthy
+        condition: service_healthy
+    volumes:
+      - ./app/queries/charts:/app/queries/charts
 
 volumes:
   postgres_data:
+  charts_data:
