@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from main import build_database_url
+from app.database import build_database_url
 
 from sqlalchemy import create_engine
 from sqlalchemy import text
