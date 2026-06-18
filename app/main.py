@@ -3,16 +3,17 @@ import os
 import random
 
 from app.database import build_database_url
+from app.models.customer import Customer
+from app.models.order import Order
+from app.models.order_items import OrderItem
+from app.models.product import Product
 from faker import Faker
-from models.customer import Customer
-from models.order import Order
-from models.order_items import OrderItem
-from models.product import Product
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+BATCH_SIZE = 5000
 
 
 def main():
@@ -75,31 +76,48 @@ def seed_products(session, num_products):
 
 def seed_orders(session, num_orders, products):
     customer_ids = [c[0] for c in session.query(Customer.id).all()]
+    max_order_id = session.query(func.max(Order.id)).scalar() or 0
+    next_order_id = max_order_id + 1
+    order_batch = []
     order_items_batch = []
+
     for order_num in range(num_orders):
         customer_id = random.choice(customer_ids)
-        order = Order(customer_id=customer_id)
-        session.add(order)
-        session.flush()
+        order_id = next_order_id + order_num
+        order_batch.append(
+            {
+                "id": order_id,
+                "customer_id": customer_id,
+            }
+        )
+
         number_of_items = random.randint(1, 5)
-        for i in range(number_of_items):
+        for _ in range(number_of_items):
             product = random.choice(products)
             quantity = random.randint(1, 5)
             total_price = product.price * quantity
-            order_items_batch.append({
-                "order_id": order.id,
-                "product_id": product.id,
-                "quantity": quantity,
-                "total_price": total_price,
-            })
-        if len(order_items_batch) >= 10000:
+            order_items_batch.append(
+                {
+                    "order_id": order_id,
+                    "product_id": product.id,
+                    "quantity": quantity,
+                    "total_price": total_price,
+                }
+            )
+        if len(order_batch) >= BATCH_SIZE:
+            session.bulk_insert_mappings(Order, order_batch)
+            order_batch.clear()
+
+        if len(order_items_batch) >= BATCH_SIZE:
             session.bulk_insert_mappings(OrderItem, order_items_batch)
-            session.commit()
             order_items_batch.clear()
-            logger.info(f"inserted {num_orders} orders")
+    if order_batch:
+        session.bulk_insert_mappings(Order, order_batch)
+
     if order_items_batch:
         session.bulk_insert_mappings(OrderItem, order_items_batch)
     session.commit()
+    logger.info(f"Inserted {num_orders} orders successfully")
 
 
 if __name__ == "__main__":

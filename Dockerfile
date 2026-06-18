@@ -9,6 +9,14 @@ FROM python:3.12 AS data_generator
 WORKDIR /app
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY app/ .
-CMD ["sh", "-c", "python main.py && python queries/run.py"]
+COPY app ./app
+CMD ["sh", "-c", "python -m app.main && python -m app.queries.run"]
+
+#image for etl
+FROM python:3.12 AS etl
+WORKDIR /app
+COPY app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app ./app
+CMD ["python", "-m", "app.etl.etl_pipeline"]
 

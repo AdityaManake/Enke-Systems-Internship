@@ -31,6 +31,19 @@ services:
     volumes:
       - ./app/queries/charts:/app/queries/charts
 
+  etl:
+    build:
+      context: .
+      target: etl
+
+    container_name: etl-container
+
+    depends_on:
+      data_generator:
+        condition: service_completed_successfully
+
+
+
 volumes:
   postgres_data:
   charts_data:

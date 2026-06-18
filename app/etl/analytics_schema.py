@@ -10,5 +10,5 @@ def main():
 def create_analytics_schema(engine):
     with engine.connect() as conn:
         conn.execute(
-            "CREATE SCHEMA analytics;"
+            "CREATE SCHEMA IF NOT EXISTS analytics;"
         )
