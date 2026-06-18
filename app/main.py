@@ -90,34 +90,25 @@ def seed_orders(session, num_orders, products):
                 "customer_id": customer_id,
             }
         )
-
         number_of_items = random.randint(1, 5)
         for _ in range(number_of_items):
             product = random.choice(products)
             quantity = random.randint(1, 5)
-            total_price = product.price * quantity
             order_items_batch.append(
                 {
                     "order_id": order_id,
                     "product_id": product.id,
                     "quantity": quantity,
-                    "total_price": total_price,
+                    "total_price": product.price * quantity,
                 }
             )
-        if len(order_batch) >= BATCH_SIZE:
-            session.bulk_insert_mappings(Order, order_batch)
-            order_batch.clear()
-
-        if len(order_items_batch) >= BATCH_SIZE:
-            session.bulk_insert_mappings(OrderItem, order_items_batch)
-            order_items_batch.clear()
-    if order_batch:
-        session.bulk_insert_mappings(Order, order_batch)
-
-    if order_items_batch:
-        session.bulk_insert_mappings(OrderItem, order_items_batch)
+    session.bulk_insert_mappings(Order, order_batch)
     session.commit()
-    logger.info(f"Inserted {num_orders} orders successfully")
+    logger.info(f"Inserted {len(order_batch)} orders")
+    session.bulk_insert_mappings(OrderItem, order_items_batch)
+    session.commit()
+
+    logger.info(f"Inserted {len(order_items_batch)} order items")
 
 
 if __name__ == "__main__":

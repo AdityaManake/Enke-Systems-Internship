@@ -35,7 +35,8 @@ services:
     build:
       context: .
       target: etl
-
+    env_file:
+      - .env.user
     container_name: etl-container
 
     depends_on:
