@@ -9,7 +9,7 @@ from app.models.order_items import OrderItem
 from app.models.product import Product
 from faker import Faker
 from sqlalchemy import create_engine, func
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

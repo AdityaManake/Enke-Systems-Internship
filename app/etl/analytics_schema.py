@@ -14,3 +14,17 @@ def create_analytics_schema(engine):
                 "CREATE SCHEMA IF NOT EXISTS analytics;"
             )
         )
+        conn.execute(
+            text(
+
+                """CREATE TABLE IF NOT EXISTS analytics.etl_metadata
+                (
+                    table_name
+                    VARCHAR
+                   (
+                    100
+                   ) PRIMARY KEY,
+                    last_sync_time TIMESTAMP
+                    );"""
+            )
+        )
