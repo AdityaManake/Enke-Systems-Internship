@@ -18,5 +18,5 @@ WORKDIR /app
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
-CMD ["python", "-m", "app.etl.etl_pipeline"]
+CMD ["python", "-m", "app.etl.sync_orders_per_month"]
 
