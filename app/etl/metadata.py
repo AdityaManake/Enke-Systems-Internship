@@ -22,13 +22,11 @@ def get_last_synced(engine, table_name):
     return result[0] if result else None
 
 
-def update_last_synced(engine, table_name, sync_time):
+def update_last_synced(conn, table_name, sync_time):
     query = text("""
                  INSERT INTO analytics.etl_metadata(table_name, last_sync_time)
                  VALUES (:table_name, :sync_time) ON CONFLICT (table_name)
                  DO
                  UPDATE SET last_sync_time =EXCLUDED.last_sync_time
                  """)
-    with engine.begin() as conn:
-        conn.execute(query, {"table_name": table_name,
-                             "sync_time": sync_time})
+    conn.execute(query, {"table_name": table_name, "sync_time": sync_time})
