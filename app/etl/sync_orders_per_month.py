@@ -22,13 +22,16 @@ def main():
     create_analytics_schema(engine)
     etl_start_time = datetime.now(UTC)
     last_sync = get_last_synced(engine, "orders_per_month")
+    logger.info("Starting incremental sync")
     incremental_orders_per_month(engine, base_dir, last_sync)
+    logger.info("Updating analytics.orders_per_month")
     update_last_synced(engine, "orders_per_month", etl_start_time)
+    logger.info("Updating metadata")
 
 
 def incremental_orders_per_month(engine, base_dir, last_sync, ):
     try:
-        query_file = base_dir / "queries" / "orders_per_month.sql"
+        query_file = base_dir / "queries" / "incremental_orders_per_month.sql"
         with open(query_file, "r") as f:
             query = f.read()
 
@@ -45,7 +48,7 @@ def incremental_orders_per_month(engine, base_dir, last_sync, ):
                                   """),
                              {
                                  "month": row["month"],
-                                 "total_orders": row["total_orders"]
+                                 "total_orders": row["new_orders"]
                              }
 
                              )
@@ -54,3 +57,7 @@ def incremental_orders_per_month(engine, base_dir, last_sync, ):
     except Exception as e:
         logger.exception(e)
         raise
+
+
+if __name__ == "__main__":
+    main()

@@ -7,8 +7,12 @@ from app.database import build_database_url
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def main():
@@ -30,13 +34,21 @@ def creating_df(queries_dir):
     df_dict = {}
     for file in os.listdir(queries_dir):
         logger.info(f"Loading queries from {file}")
-        if file.endswith(".sql"):
-            try:
-                df_name = file.replace(".sql", "_df")
-                result = run_query(engine, file)
-                df_dict[df_name] = pd.DataFrame(result)
-            except Exception as e:
-                logger.error(f"{file}, error : {e}")
+
+        if not file.endswith(".sql"):
+            continue
+
+        if file == "incremental_orders_per_month.sql":
+            continue
+
+        try:
+            df_name = file.replace(".sql", "_df")
+            result = run_query(engine, file)
+            df_dict[df_name] = pd.DataFrame(result)
+
+        except Exception as e:
+            logger.error(f"{file}, error: {e}")
+
     return df_dict
 
 

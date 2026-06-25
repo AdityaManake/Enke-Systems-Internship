@@ -9,11 +9,15 @@ from app.models.order_items import OrderItem
 from app.models.product import Product
 from faker import Faker
 from sqlalchemy import create_engine, func
-from sqlalchemy.orm import sessionmaker 
+from sqlalchemy.orm import sessionmaker
+
+BATCH_SIZE = 5000
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-BATCH_SIZE = 5000
 
 
 def main():

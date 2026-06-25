@@ -25,7 +25,7 @@ def get_last_synced(engine, table_name):
 def update_last_synced(engine, table_name, sync_time):
     query = text("""
                  INSERT INTO analytics.etl_metadata(table_name, last_sync_time)
-                 VALUES (:table_name, NOW()) ON CONFLICT (table_name)
+                 VALUES (:table_name, :sync_time) ON CONFLICT (table_name)
                  DO
                  UPDATE SET last_sync_time =EXCLUDED.last_sync_time
                  """)
