@@ -19,6 +19,8 @@ services:
 
 
   data_generator:
+    profiles:
+      - tools
     build:
       context: .
       target: data_generator
@@ -31,19 +33,33 @@ services:
     volumes:
       - ./app/queries/charts:/app/queries/charts
 
+  create_charts:
+    profiles:
+      - tools
+    build:
+      context: .
+      target: create_charts
+    container_name: create_charts
+    env_file:
+      - .env.user
+    depends_on:
+      data_generator:
+        condition: service_completed_successfully
+    volumes:
+      - ./app/queries/charts:/app/queries/charts
+
   etl:
+    profiles:
+      - tools
     build:
       context: .
       target: etl
     env_file:
       - .env.user
     container_name: etl-container
-
     depends_on:
-      data_generator:
+      create_charts:
         condition: service_completed_successfully
-
-
 
 volumes:
   postgres_data:

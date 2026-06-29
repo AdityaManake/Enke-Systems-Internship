@@ -8,7 +8,7 @@ from app.models.order import Order
 from app.models.order_items import OrderItem
 from app.models.product import Product
 from faker import Faker
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import sessionmaker
 
 BATCH_SIZE = 5000
@@ -79,6 +79,7 @@ def seed_products(session, num_products):
 
 
 def seed_orders(session, num_orders, products):
+    fake = Faker()
     customer_ids = [c[0] for c in session.query(Customer.id).all()]
     max_order_id = session.query(func.max(Order.id)).scalar() or 0
     next_order_id = max_order_id + 1
@@ -92,6 +93,7 @@ def seed_orders(session, num_orders, products):
             {
                 "id": order_id,
                 "customer_id": customer_id,
+                "ordered_at": fake.date_time_between(start_date="-2y", end_date="now")
             }
         )
         number_of_items = random.randint(1, 5)
@@ -113,6 +115,9 @@ def seed_orders(session, num_orders, products):
     session.commit()
 
     logger.info(f"Inserted {len(order_items_batch)} order items")
+
+    session.execute(text("SELECT setval(pg_get_serial_sequence('orders', 'id'), (SELECT MAX(id) FROM orders))"))
+    session.commit()
 
 
 if __name__ == "__main__":

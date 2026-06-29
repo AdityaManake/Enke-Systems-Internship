@@ -43,3 +43,28 @@ def create_analytics_schema(engine):
                  );
                  """)
         )
+
+        conn.execute(text("""
+                          CREATE TABLE IF NOT EXISTS analytics.top_products
+                          (
+                              product_id
+                              INT
+                              PRIMARY
+                              KEY,
+                              product_name
+                              VARCHAR
+                          (
+                              50
+                          )
+                              NOT
+                              NULL,
+                              total_revenue DECIMAL
+                          (
+                              18,
+                              3
+                          )
+                              NOT
+                              NULL
+
+                              )
+                          """))

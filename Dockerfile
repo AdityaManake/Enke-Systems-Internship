@@ -10,7 +10,16 @@ WORKDIR /app
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
-CMD ["sh", "-c", "python -m app.main && python -m app.queries.run"]
+CMD ["sh", "-c", "python -m app.main"]
+
+#image for create-charts
+FROM python:3.12 AS create_charts
+WORKDIR /app
+COPY app/requirements.txt .
+RUN pip install -r requirements.txt
+COPY app ./app
+CMD ["python", "-m", "app.queries.run"]
+
 
 #image for etl
 FROM python:3.12 AS etl
@@ -18,5 +27,5 @@ WORKDIR /app
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
-CMD ["python", "-m", "app.etl.sync_orders_per_month"]
+CMD ["python", "-m", "app.etl.etl_pipeline"]
 

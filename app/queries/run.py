@@ -37,14 +37,9 @@ def creating_df(queries_dir):
 
         if not file.endswith(".sql"):
             continue
-
-        if file == "incremental_orders_per_month.sql":
-            continue
-
         try:
             df_name = file.replace(".sql", "_df")
-            result = run_query(engine, file)
-            df_dict[df_name] = pd.DataFrame(result)
+            df_dict[df_name] = run_query(engine, file)
 
         except Exception as e:
             logger.error(f"{file}, error: {e}")
@@ -58,11 +53,13 @@ def run_query(engine, filename: str):
         query = f.read()
     with engine.connect() as conn:
         result = conn.execute(text(query))
-        return result.fetchall()
+        df = pd.DataFrame(result.fetchall(), columns=result.keys())
+    return df
 
 
 def customer_vs_amount(df_dict, queries_dir):
     top_customers = df_dict["top_customers_df"]
+    logger.info(top_customers.columns.tolist())
     plt.figure(figsize=(12, 6))
     plt.bar(top_customers.name, top_customers.total_amount_spend, color="blue", width=0.6)
     plt.xlabel("Customers")
