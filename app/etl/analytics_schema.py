@@ -24,7 +24,7 @@ def create_analytics_schema(engine):
                  (
                      100
                  ) PRIMARY KEY,
-                     last_sync_time TIMESTAMP );
+                     last_sync_time TIMESTAMPTZ );
                  """)
         )
 
@@ -66,5 +66,89 @@ def create_analytics_schema(engine):
                               NOT
                               NULL
 
+                              )
+                          """))
+
+        conn.execute(text("""
+                          CREATE TABLE IF NOT EXISTS analytics.top_customers
+                          (
+                              customer_id
+                              INT
+                              PRIMARY
+                              KEY,
+                              customer_name
+                              VARCHAR
+                          (
+                              50
+                          ) NOT NULL,
+                              total_amount_spend DECIMAL
+                          (
+                              18,
+                              3
+                          ) NOT NULL
+
+                              )
+                          """))
+
+        conn.execute(text("""
+                          CREATE TABLE IF NOT EXISTS analytics.customers_with_many_orders
+                          (
+                              customer_id
+                              INT
+                              PRIMARY
+                              KEY,
+                              customer_name
+                              VARCHAR
+                          (
+                              50
+                          ) NOT NULL,
+                              total_orders BIGINT NOT NULL
+                              )
+                          """))
+
+        conn.execute(text("""
+                          CREATE TABLE IF NOT EXISTS analytics.most_expensive_order_per_customer
+                          (
+                              customer_id
+                              INT
+                              PRIMARY
+                              KEY,
+                              customer_name
+                              VARCHAR
+                          (
+                              50
+                          ) NOT NULL,
+                              most_expensive_order DECIMAL
+                          (
+                              18,
+                              2
+                          ) NOT NULL
+
+                              )
+                          """))
+
+        conn.execute(text("""
+                          CREATE TABLE IF NOT EXISTS analytics.avg_order_value
+                          (
+                              customer_id
+                              INT
+                              PRIMARY
+                              KEY,
+                              customer_name
+                              VARCHAR
+                          (
+                              50
+                          ),
+                              total_amount DECIMAL
+                          (
+                              18,
+                              2
+                          ) NOT NULL,
+                              total_orders BIGINT NOT NULL,
+                              avg_order_value DECIMAL
+                          (
+                              18,
+                              2
+                          ) NOT NULL
                               )
                           """))
