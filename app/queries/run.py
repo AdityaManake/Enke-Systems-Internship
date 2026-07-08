@@ -1,147 +1,187 @@
 import logging
 import os
+import time
+from abc import ABC, abstractmethod
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from app.database import build_database_url
-from sqlalchemy import create_engine
-from sqlalchemy import text
+from app.etl.pipelines.average_order_value_pipeline import AverageOrderValuePipeline
+from app.etl.pipelines.customers_with_many_orders_pipeline import CustomersWithManyOrdersPipeline
+from app.etl.pipelines.most_expensive_order_per_customer_pipeline import MostExpensiveOrderPerCustomerPipeline
+from app.etl.pipelines.orders_per_month_pipeline import OrdersPerMonthPipeline
+from app.etl.pipelines.top_customers_pipeline import TopCustomersPipeline
+from app.etl.pipelines.top_products_pipeline import TopProductsPipeline
+from sqlalchemy import create_engine, text
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+CHARTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "charts")
+
+NEVER_ORDERED_PRODUCTS_QUERY = """
+    SELECT p.id, p.name
+    FROM products p
+             LEFT JOIN order_items oi ON p.id = oi.product_id
+    WHERE oi.product_id IS NULL
+"""
+
+
+class QueryPerformance:
+    """Runs a raw SQL string against the engine and times it."""
+
+    def __init__(self, engine):
+        self.engine = engine
+
+    def run(self, query: str) -> tuple[pd.DataFrame, float]:
+        start = time.perf_counter()
+        with self.engine.connect() as conn:
+            result = conn.execute(text(query))
+            df = pd.DataFrame(result.fetchall(), columns=result.keys())
+        elapsed = time.perf_counter() - start
+        return df, elapsed
+
+
+class Chart(ABC):
+    def __init__(self, name: str):
+        self.name = name
+
+    @abstractmethod
+    def plot(self, df: pd.DataFrame):
+        raise NotImplementedError
+
+    def save(self, df: pd.DataFrame, suffix: str):
+        os.makedirs(CHARTS_DIR, exist_ok=True)
+        plt.figure(figsize=(12, 6))
+        self.plot(df)
+        plt.tight_layout()
+        path = os.path.join(CHARTS_DIR, f"{self.name}_{suffix}.png")
+        plt.savefig(path)
+        plt.close()
+        logger.info(f"Saved chart to {path}")
+
+
+class BarChart(Chart):
+    def __init__(self, name, x, y, xlabel, ylabel, rotate_labels=False):
+        super().__init__(name)
+        self.x = x
+        self.y = y
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+        self.rotate_labels = rotate_labels
+
+    def plot(self, df):
+        x_data = df[self.x].astype(str)
+        plt.bar(x_data, df[self.y], color="blue", width=0.6)
+        plt.xlabel(self.xlabel)
+        plt.ylabel(self.ylabel)
+        if self.rotate_labels:
+            plt.xticks(rotation=45, ha="right")
+
+
+class LineChart(Chart):
+    def __init__(self, name, x, y, xlabel, ylabel):
+        super().__init__(name)
+        self.x = x
+        self.y = y
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+
+    def plot(self, df):
+        x_data = df[self.x].astype(str)
+        plt.plot(x_data, df[self.y], color="blue", marker="o")
+        plt.xlabel(self.xlabel)
+        plt.ylabel(self.ylabel)
+
+
+class ChartQuery:
+    """Ties one ETL pipeline's raw_query() to its materialized table and a chart.
+
+    raw_query() (defined once on the pipeline, see app/etl/pipelines) is the
+    single source of truth for the aggregation SQL - no separate copy lives
+    here. Every run times the raw query against the source tables against the
+    materialized analytics table, so raw-vs-materialized performance is always
+    visible, and renders the chart from the materialized result.
+    """
+
+    def __init__(self, pipeline_cls, materialized_table: str, chart: Chart, transform=None):
+        self.pipeline_cls = pipeline_cls
+        self.materialized_table = materialized_table
+        self.chart = chart
+        self.transform = transform or (lambda df: df)
+
+    def run(self, perf: QueryPerformance):
+        raw_df, raw_seconds = perf.run(self.pipeline_cls.raw_query())
+        materialized_df, materialized_seconds = perf.run(f"SELECT * FROM analytics.{self.materialized_table}")
+        speedup = raw_seconds / materialized_seconds if materialized_seconds else float("inf")
+        logger.info(
+            f"{self.chart.name}: raw={raw_seconds:.4f}s materialized={materialized_seconds:.4f}s "
+            f"speedup={speedup:.1f}x"
+        )
+        self.chart.save(self.transform(raw_df), "raw")
+        self.chart.save(self.transform(materialized_df), "materialized")
+
+
+def build_chart_queries():
+    return [
+        ChartQuery(
+            TopCustomersPipeline, "top_customers",
+            BarChart("customer_vs_amount", x="customer_name", y="total_amount_spend",
+                     xlabel="Customers", ylabel="Revenue", rotate_labels=True),
+            transform=lambda df: df.assign(total_amount_spend=df["total_amount_spend"].astype(float)).nlargest(10, "total_amount_spend"),
+        ),
+        ChartQuery(
+            TopProductsPipeline, "top_products",
+            BarChart("product_vs_revenue", x="product_name", y="total_revenue",
+                     xlabel="Products", ylabel="Revenue"),
+            transform=lambda df: df.assign(total_revenue=df["total_revenue"].astype(float)).nlargest(10, "total_revenue"),
+        ),
+        ChartQuery(
+            OrdersPerMonthPipeline, "orders_per_month",
+            LineChart("orders_per_month", x="month", y="total_orders",
+                      xlabel="Month", ylabel="Total Orders"),
+        ),
+        ChartQuery(
+            CustomersWithManyOrdersPipeline, "customers_with_many_orders",
+            BarChart("customer_vs_ordercount", x="customer_id", y="total_orders",
+                     xlabel="Customers", ylabel="Total Orders"),
+            # the ">5" cut is a read-time concern, kept out of the pipeline's raw_query()
+            # so incremental accumulation stays correct - see CustomersWithManyOrdersPipeline.
+            transform=lambda df: df[df["total_orders"].astype(int) > 5].assign(total_orders=lambda d: d["total_orders"].astype(int)).nlargest(10, "total_orders"),
+        ),
+        ChartQuery(
+            MostExpensiveOrderPerCustomerPipeline, "most_expensive_order_per_customer",
+            LineChart("mostexpensive_order_per_customer", x="customer_id", y="most_expensive_order",
+                      xlabel="Customers", ylabel="Most Expensive Orders"),
+            transform=lambda df: df.assign(most_expensive_order=df["most_expensive_order"].astype(float)).nlargest(20, "most_expensive_order"),
+        ),
+        ChartQuery(
+            AverageOrderValuePipeline, "avg_order_value",
+            BarChart("ordervalue_vs_customers", x="customer_id", y="avg_order_value",
+                     xlabel="Customers", ylabel="Average Order Value"),
+            transform=lambda df: df.assign(avg_order_value=df["avg_order_value"].astype(float)).nlargest(10, "avg_order_value"),
+        ),
+    ]
+
+
+def log_never_ordered_products(perf: QueryPerformance):
+    never_ordered, _ = perf.run(NEVER_ORDERED_PRODUCTS_QUERY)
+    logger.info(f"Count of products that were never ordered: {len(never_ordered)}")
+
 
 def main():
-    queries_dir = os.path.dirname(os.path.abspath(__file__))
-    dict_df = creating_df(queries_dir)
-    customer_vs_amount(dict_df, queries_dir)
-    product_vs_revenue(dict_df, queries_dir)
-    orders_per_month(dict_df, queries_dir)
-    ordervalue_vs_customers(dict_df, queries_dir)
-    customer_vs_ordercount(dict_df, queries_dir)
-    mostexpensive_orders(dict_df, queries_dir)
-    products_never_ordered(dict_df)
+    engine = create_engine(build_database_url())
+    perf = QueryPerformance(engine)
 
+    for chart_query in build_chart_queries():
+        chart_query.run(perf)
 
-def creating_df(queries_dir):
-    database_url = build_database_url()
-    engine = create_engine(database_url)
-
-    df_dict = {}
-    for file in os.listdir(queries_dir):
-        logger.info(f"Loading queries from {file}")
-
-        if not file.endswith(".sql"):
-            continue
-        try:
-            df_name = file.replace(".sql", "_df")
-            df_dict[df_name] = run_query(engine, file)
-
-        except Exception as e:
-            logger.error(f"{file}, error: {e}")
-
-    return df_dict
-
-
-def run_query(engine, filename: str):
-    queries_dir = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(queries_dir, filename)) as f:
-        query = f.read()
-    with engine.connect() as conn:
-        result = conn.execute(text(query))
-        df = pd.DataFrame(result.fetchall(), columns=result.keys())
-    return df
-
-
-def customer_vs_amount(df_dict, queries_dir):
-    top_customers = df_dict["top_customers_df"]
-    logger.info(top_customers.columns.tolist())
-    plt.figure(figsize=(12, 6))
-    plt.bar(top_customers.name, top_customers.total_amount_spend, color="blue", width=0.6)
-    plt.xlabel("Customers")
-    plt.ylabel("Revenue")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    chart_dir = os.path.join(queries_dir, "charts")
-    os.makedirs(chart_dir, exist_ok=True)
-    plt.savefig(os.path.join(chart_dir, "customer_vs_amount.png"))
-    plt.close()
-    logger.info(f"Saving chart for customer_vs_amount")
-
-
-def product_vs_revenue(df_dict, queries_dir):
-    top_products = df_dict["top_products_df"]
-    labels = top_products["name"]
-    plt.bar(labels, top_products.total_revenue, color="blue", width=0.6)
-    plt.xlabel("Products")
-    plt.ylabel("Revenue")
-    chart_dir = os.path.join(queries_dir, "charts")
-    os.makedirs(chart_dir, exist_ok=True)
-    plt.savefig(os.path.join(chart_dir, "product_vs_revenue.png"))
-    plt.close()
-    logger.info(f"Saving chart for product_vs_revenue")
-
-
-def orders_per_month(df_dict, queries_dir):
-    order_per_month = df_dict["orders_per_month_df"]
-    plt.plot(order_per_month.month, order_per_month.total_orders, color="blue")
-    plt.xlabel("Month")
-    plt.ylabel("Total Orders")
-    chart_dir = os.path.join(queries_dir, "charts")
-    os.makedirs(chart_dir, exist_ok=True)
-    plt.savefig(os.path.join(chart_dir, "orders_per_month.png"))
-    plt.close()
-    logger.info(f"Saving chart for orders_per_month")
-
-
-def ordervalue_vs_customers(df_dict, queries_dir):
-    avg_order_value = df_dict["avg_order_value_df"]
-    plt.bar(avg_order_value.id, avg_order_value.average_order_value, color="blue")
-    plt.xlabel("Customers")
-    plt.ylabel("Average Order Value")
-    chart_dir = os.path.join(queries_dir, "charts")
-    os.makedirs(chart_dir, exist_ok=True)
-    plt.savefig(os.path.join(chart_dir, "ordervalue_vs_customers.png"))
-    plt.close()
-    logger.info(f"Saving chart for ordervalue_vs_customers")
-
-
-def customer_vs_ordercount(df_dict, queries_dir):
-    customers_with_many_orders = df_dict["customers_with_many_orders_df"]
-    plt.bar(customers_with_many_orders.id, customers_with_many_orders.total_orders, color="blue", width=0.6)
-    plt.xlabel("Customers")
-    plt.ylabel("Total Orders")
-    chart_dir = os.path.join(queries_dir, "charts")
-    os.makedirs(chart_dir, exist_ok=True)
-    plt.savefig(os.path.join(chart_dir, "customer_vs_ordercount.png"))
-    plt.close()
-    logger.info(f"Saving chart for customer_vs_ordercount")
-
-
-def mostexpensive_orders(df_dict, queries_dir):
-    most_expensive_order_per_customer = df_dict["most_expensive_order_per_customer_df"]
-    plt.plot(most_expensive_order_per_customer.id, most_expensive_order_per_customer.most_expensive_order, color="blue")
-    plt.xlabel("Customers")
-    plt.ylabel("Most Expensive Orders")
-    chart_dir = os.path.join(queries_dir, "charts")
-    os.makedirs(chart_dir, exist_ok=True)
-    plt.savefig(os.path.join(chart_dir, "mostexpensive_order_per_customer.png"))
-    plt.close()
-    logger.info(f"Saving chart for mostexpensive_order_per_customer")
-
-
-def products_never_ordered(df_dict):
-    logger.info("Count of Products that were never ordered.")
-    never_ordered_products = df_dict["never_ordered_products_df"]
-    if len(never_ordered_products) > 0:
-        len_never_ordered_products = len(never_ordered_products)
-    else:
-        len_never_ordered_products = 0
-    logger.info(f"Count of Products that were never ordered. {len_never_ordered_products}")
+    log_never_ordered_products(perf)
 
 
 if __name__ == '__main__':

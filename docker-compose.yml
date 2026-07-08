@@ -31,22 +31,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./app/queries/charts:/app/queries/charts
-
-  create_charts:
-    profiles:
-      - tools
-    build:
-      context: .
-      target: create_charts
-    container_name: create_charts
-    env_file:
-      - .env.user
-    depends_on:
-      data_generator:
-        condition: service_completed_successfully
-    volumes:
-      - ./app/queries/charts:/app/queries/charts
+      - ./app/queries/charts:/app/app/queries/charts
 
   etl:
     profiles:
@@ -58,8 +43,36 @@ services:
       - .env.user
     container_name: etl-container
     depends_on:
-      create_charts:
+      data_generator:
         condition: service_completed_successfully
+
+  validate_pipelines:
+    profiles:
+      - tools
+    build:
+      context: .
+      target: validate_pipelines
+    env_file:
+      - .env.user
+    container_name: pipeline-validation
+    depends_on:
+      etl:
+        condition: service_completed_successfully
+
+  create_charts:
+    profiles:
+      - tools
+    build:
+      context: .
+      target: create_charts
+    container_name: create_charts
+    env_file:
+      - .env.user
+    depends_on:
+      etl:
+        condition: service_completed_successfully
+    volumes:
+      - ./app/queries/charts:/app/app/queries/charts
 
 volumes:
   postgres_data:
