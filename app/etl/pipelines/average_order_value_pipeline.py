@@ -14,9 +14,9 @@ class AverageOrderValuePipeline(BasePipeline):
         return f"""
             SELECT c.id                              AS customer_id,
                    c.name                             AS customer_name,
-                   SUM(order_totals.order_total)      AS total_amount,
+                   CAST(SUM(order_totals.order_total) AS DECIMAL(18,2)) AS total_amount,
                    COUNT(o.id)                        AS total_orders,
-                   AVG(order_totals.order_total)      AS avg_order_value
+                   CAST(AVG(order_totals.order_total) AS DECIMAL(18,2)) AS avg_order_value
             FROM customers c
                      JOIN orders o ON c.id = o.customer_id
                      JOIN (SELECT order_id, SUM(total_price) AS order_total

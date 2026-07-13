@@ -14,7 +14,7 @@ class TopCustomersPipeline(BasePipeline):
         return f"""
             SELECT c.id                AS customer_id,
                    c.name              AS customer_name,
-                   SUM(oi.total_price) AS total_amount_spend
+                   CAST(SUM(oi.total_price) AS DECIMAL(18,3)) AS total_amount_spend
             FROM customers c
                      JOIN orders o ON c.id = o.customer_id
                      JOIN order_items oi ON o.id = oi.order_id

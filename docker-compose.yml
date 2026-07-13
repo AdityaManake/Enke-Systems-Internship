@@ -46,18 +46,6 @@ services:
       data_generator:
         condition: service_completed_successfully
 
-  validate_pipelines:
-    profiles:
-      - tools
-    build:
-      context: .
-      target: validate_pipelines
-    env_file:
-      - .env.user
-    container_name: pipeline-validation
-    depends_on:
-      etl:
-        condition: service_completed_successfully
 
   create_charts:
     profiles:

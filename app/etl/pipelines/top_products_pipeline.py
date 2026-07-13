@@ -14,7 +14,7 @@ class TopProductsPipeline(BasePipeline):
         return f"""
             SELECT p.id                    AS product_id,
                    p.name                  AS product_name,
-                   SUM(oi.total_price)     AS total_revenue
+                   CAST(SUM(oi.total_price) AS DECIMAL(18,3)) AS total_revenue
             FROM products p
                      JOIN order_items oi ON p.id = oi.product_id
             {where_clause}

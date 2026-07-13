@@ -14,7 +14,7 @@ class MostExpensiveOrderPerCustomerPipeline(BasePipeline):
         return f"""
             SELECT c.id                                  AS customer_id,
                    c.name                                AS customer_name,
-                   MAX(order_totals.order_total)          AS most_expensive_order
+                   CAST(MAX(order_totals.order_total) AS DECIMAL(18,2)) AS most_expensive_order
             FROM customers c
                      JOIN orders o ON c.id = o.customer_id
                      JOIN (SELECT order_id, SUM(total_price) AS order_total

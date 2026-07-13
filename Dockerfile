@@ -29,10 +29,3 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 CMD ["python", "-m", "app.etl.pipelines_runner"]
 
-#image for validation
-FROM python:3.12 AS validate_pipelines
-WORKDIR /app
-COPY app/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY app ./app
-CMD ["python", "-m", "app.etl.validate_pipelines"]
