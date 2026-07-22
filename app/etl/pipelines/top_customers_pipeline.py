@@ -2,6 +2,7 @@ import logging
 
 from app.etl.base_pipeline import BasePipeline
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 logger = logging.getLogger(__name__)
 
@@ -34,3 +35,33 @@ class TopCustomersPipeline(BasePipeline):
 
     def update_sync_time(self):
         self._persist_sync_time(self._max_created_at("order_items"))
+
+    @property
+    def validate_pipeline(self):
+        try:
+            logger.info(f"Validating top_customers")
+            validation_query = f"""
+            SELECT EXISTS(
+                (
+                    SELECT *
+                    FROM analytics.top_customers
+                    EXCEPT
+                    {self.raw_query()}
+                )
+
+                UNION ALL
+
+                (
+                    {self.raw_query()}
+                    EXCEPT
+                    SELECT *
+                    FROM analytics.top_customers
+                )
+            )
+            """
+            has_differences = self.conn.execute(text(validation_query)).scalar_one()
+            if has_differences:
+                raise ValueError("Validation failed: the materialized data does not match the source data.")
+            logger.info(f"validation succeeded for top_customers")
+        except (SQLAlchemyError, ValueError) as e:
+            raise Exception(f"Validation failed for top_customers: {e}") from e

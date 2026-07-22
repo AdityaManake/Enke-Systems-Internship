@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from sqlalchemy import text
+from types import NotImplementedType
 
 
 class BasePipeline(ABC):
@@ -13,7 +14,11 @@ class BasePipeline(ABC):
 
     def run(self):
         self.execute()
+        self.validate()
         self.update_sync_time()
+
+    def validate(self):
+        _ = self.validate_pipeline
 
     def _max_created_at(self, table: str, column: str = "created_at"):
         """MAX(column) FROM table, restricted to rows newer than last_sync.
@@ -59,4 +64,9 @@ class BasePipeline(ABC):
         there is no single generic "source_table", since a pipeline can join
         several tables and only some of them matter for its incremental filter.
         """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def validate_pipeline(self):
         raise NotImplementedError

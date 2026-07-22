@@ -61,6 +61,28 @@ services:
         condition: service_completed_successfully
     volumes:
       - ./app/queries/charts:/app/app/queries/charts
+  
+  tests:
+    profiles:
+      - tools
+    build:
+      context: .
+      target: tests
+    env_file:
+      - .env.user
+    container_name: tests
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - TESTCONTAINERS_RYUK_DISABLED=true
+      - TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./app:/app/app
+      - ./tests:/app/tests
+    command: pytest
+
+
 
 volumes:
   postgres_data:
