@@ -3,4 +3,5 @@ venv/
 __pycache__/
 *.pyc
 .env.user
-linux_docker_learning.txt/
+linux_docker_learning.txt
+.dockerignore/

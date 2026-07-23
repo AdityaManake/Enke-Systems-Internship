@@ -1,6 +1,10 @@
 import pytest
 from app.database import Base
 from app.etl.analytics_schema import create_analytics_schema
+from app.models.customer import Customer  # noqa: F401
+from app.models.order import Order  # noqa: F401
+from app.models.order_items import OrderItem  # noqa: F401
+from app.models.product import Product  # noqa: F401
 from sqlalchemy import create_engine, text
 from testcontainers.postgres import PostgresContainer
 

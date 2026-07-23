@@ -7,7 +7,7 @@ from sqlalchemy import text
 def test_happy_path(engine, seed_source_data):
     runner = PipelinesRunner(engine, seed_source_data)
     runner.run_all()
-
+ 
     tables = [
         "analytics.orders_per_month", "analytics.customers_with_many_orders",
         "analytics.most_expensive_order_per_customer",
